@@ -30,9 +30,9 @@ void run(HookContext context) async {
     display: (application) => application.displayName,
   );
 
-  FirebaseConfig firebaseConfig = await getFirebaseConfig(firebaseJsonUri);
+  List<Hosting> hostings = await getHostings(firebaseJsonUri);
 
-  List<Hosting> hostings = selectedApplications.map((application) {
+  List<Hosting> hostingsToAdds = selectedApplications.map((application) {
     switch (application.type) {
       case ApplicationType.angular:
         return getAngularHosting(application);
@@ -45,12 +45,9 @@ void run(HookContext context) async {
     }
   }).toList();
 
-  firebaseConfig.hosting.addAll(hostings);
+  hostings.addAll(hostingsToAdds);
 
-  await setFirebaseConfig(
-    firebaseJsonUri: firebaseJsonUri,
-    firebaseConfig: firebaseConfig,
-  );
+  await setHostings(firebaseJsonUri: firebaseJsonUri, hostings: hostings);
 }
 
 Directory getWorkSpaceDirectory() {
@@ -83,17 +80,34 @@ List<Application> getApplications(List<Directory> applicationsDirectories) {
       .toList();
 }
 
-Future<FirebaseConfig> getFirebaseConfig(Uri firebaseJsonUri) async {
+Future<List<Hosting>> getHostings(Uri firebaseJsonUri) async {
   final firebaseRawJson = await File.fromUri(firebaseJsonUri).readAsString();
-  return FirebaseConfig.fromJson(json.decode(firebaseRawJson));
+  final rawHosting = json.decode(firebaseRawJson)['hosting'];
+
+  if (rawHosting == null) {
+    return [];
+  }
+
+  if (rawHosting is Map<String, dynamic>) {
+    return [Hosting.fromJson(rawHosting)];
+  }
+
+  return (rawHosting as List<dynamic>)
+      .map((hosting) => Hosting.fromJson(hosting))
+      .toList();
 }
 
-Future<void> setFirebaseConfig({
+Future<void> setHostings({
   required Uri firebaseJsonUri,
-  required FirebaseConfig firebaseConfig,
+  required List<Hosting> hostings,
 }) async {
+  final firebaseRawJson = await File.fromUri(firebaseJsonUri).readAsString();
+  final firebase = json.decode(firebaseRawJson);
+
+  firebase['hosting'] = hostings.map((hosting) => hosting.toJson()).toList();
+
   await File.fromUri(firebaseJsonUri).writeAsString(
-    json.encode(firebaseConfig.toJson()),
+    json.encode(firebase),
   );
 }
 
