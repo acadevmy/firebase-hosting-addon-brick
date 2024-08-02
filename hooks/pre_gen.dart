@@ -2,12 +2,6 @@ import 'dart:io';
 
 import 'package:mason/mason.dart';
 
-void main(List<String> args) {
-  print(
-    Directory.current.uri.pathSegments.lastWhere((path) => path.isNotEmpty),
-  );
-}
-
 /**
  * Aggiungere Glob
  */
@@ -20,13 +14,16 @@ void run(HookContext context) {
 
   List<Application> applications = getApplications(applicationsDirectories);
 
+  if (applications.isEmpty) {
+    context.logger.alert("No applications found 😔");
+    return;
+  }
+
   List<Application> selectedApplications = context.logger.chooseAny(
-    "Which applications do you want to set up as hosting?",
+    "Which applications do you want to set up as hosting? (Press Space for select an option)",
     choices: applications,
     display: (application) => application.displayName,
   );
-
-  print(selectedApplications);
 
   // Individuare il tipo per ogni application fe
   // Angular -> angular.json
@@ -62,32 +59,65 @@ List<Directory> getApplicationsDirectory(Directory workspaceDirectory) {
 }
 
 bool checkIfIsAngularApplication(Directory directory) {
-  const _angularDescriptor = 'angular.json';
+  const angularDescriptor = 'angular.json';
 
-  return File.fromUri(directory.uri.resolve(_angularDescriptor)).existsSync();
+  return File.fromUri(directory.uri.resolve(angularDescriptor)).existsSync();
+}
+
+bool checkIfIsCypressApplication(Directory directory) {
+  const cypressDescriptor = 'cypress.config.ts';
+
+  return File.fromUri(directory.uri.resolve(cypressDescriptor)).existsSync();
+}
+
+bool checkIfIsFirebaseApplication(Directory directory) {
+  const firebaseDescriptor = 'firebase.json';
+
+  return File.fromUri(directory.uri.resolve(firebaseDescriptor)).existsSync();
+}
+
+bool checkIfIsNestApplication(Directory directory) {
+  const nestDescriptor = 'nest-cli.json';
+
+  return File.fromUri(directory.uri.resolve(nestDescriptor)).existsSync();
 }
 
 bool checkIfIsNextApplication(Directory directory) {
-  const _nextDescriptor = 'next.config.mjs';
+  const nextDescriptor = 'next.config.mjs';
   // Cercare il file next.config anche con l'estensioni js, mjs, json
 
-  return File.fromUri(directory.uri.resolve(_nextDescriptor)).existsSync();
+  return File.fromUri(directory.uri.resolve(nextDescriptor)).existsSync();
 }
 
 List<Application> getApplications(List<Directory> applicationsDirectories) {
-  return applicationsDirectories.map((directory) {
-    ApplicationType type = ApplicationType.unknown;
+  return applicationsDirectories
+      .map((directory) => Application(directory: directory))
+      .where((application) => application.type != ApplicationType.firebase)
+      .toList();
+}
 
-    if (checkIfIsAngularApplication(directory)) {
-      type = ApplicationType.angular;
-    }
+ApplicationType getApplicationTypeFromDirectory(Directory directory) {
+  if (checkIfIsAngularApplication(directory)) {
+    return ApplicationType.angular;
+  }
 
-    if (checkIfIsNextApplication(directory)) {
-      type = ApplicationType.next;
-    }
+  if (checkIfIsCypressApplication(directory)) {
+    return ApplicationType.cypress;
+  }
 
-    return Application(directory: directory, type: type);
-  }).toList();
+  if (checkIfIsFirebaseApplication(directory)) {
+    return ApplicationType.firebase;
+  }
+
+  if (checkIfIsNestApplication(directory)) {
+    return ApplicationType.nest;
+  }
+
+  if (checkIfIsNextApplication(directory)) {
+    return ApplicationType.next;
+  }
+
+  return ApplicationType.unknown;
 }
 
 class Application {
@@ -98,7 +128,8 @@ class Application {
       directory.uri.pathSegments.lastWhere((path) => path.isNotEmpty);
   String get displayName => '$name (${type.name.pascalCase})';
 
-  Application({required this.directory, required this.type});
+  Application({required this.directory})
+      : type = getApplicationTypeFromDirectory(directory);
 }
 
-enum ApplicationType { angular, next, unknown }
+enum ApplicationType { angular, cypress, firebase, nest, next, unknown }
