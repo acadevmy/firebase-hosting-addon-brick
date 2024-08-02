@@ -40,8 +40,8 @@ bool checkIfIsNestApplication(Directory directory) {
 }
 
 bool checkIfIsNextApplication(Directory directory) {
-  final nextDescriptor = Glob("next.config.*").toString();
-  return File.fromUri(directory.uri.resolve(nextDescriptor)).existsSync();
+  final nextDescriptor = Glob("next.config.*");
+  return nextDescriptor.matches(directory.path);
 }
 
 ApplicationType getApplicationTypeFromDirectory(Directory directory) {

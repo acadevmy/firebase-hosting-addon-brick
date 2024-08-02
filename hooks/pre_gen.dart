@@ -107,8 +107,10 @@ Future<void> setHostings({
 
   firebase['hosting'] = hostings.map((hosting) => hosting.toJson()).toList();
 
+  final encoder = JsonEncoder.withIndent('  ');
+
   await File.fromUri(firebaseJsonUri).writeAsString(
-    json.encode(prettyJson(firebase, indent: 2)),
+    json.encode(encoder.convert(firebase)),
   );
 }
 
