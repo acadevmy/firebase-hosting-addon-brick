@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:mason/mason.dart';
+import 'package:pretty_json/pretty_json.dart';
 import 'models/models.dart';
 
 /**
@@ -107,7 +108,7 @@ Future<void> setHostings({
   firebase['hosting'] = hostings.map((hosting) => hosting.toJson()).toList();
 
   await File.fromUri(firebaseJsonUri).writeAsString(
-    json.encode(firebase),
+    json.encode(prettyJson(firebase, indent: 2)),
   );
 }
 

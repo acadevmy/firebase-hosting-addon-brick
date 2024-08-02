@@ -6,3 +6,4 @@ environment:
 dependencies:
   glob: ^2.1.2
   mason: 0.1.0-dev.57
+  pretty_json: ^2.0.0

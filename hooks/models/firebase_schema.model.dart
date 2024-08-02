@@ -472,7 +472,7 @@ class Hosting {
     if (json['rewrites'] != null) {
       rewrites = [];
       json['rewrites'].forEach((v) {
-        rewrites!.add(v);
+        rewrites!.add(Rewrite.fromJson(v));
       });
     }
   }
