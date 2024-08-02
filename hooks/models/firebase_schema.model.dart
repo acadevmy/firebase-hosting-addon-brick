@@ -397,7 +397,8 @@ class Redirect {
     data['glob'] = this.glob;
     data['source'] = this.source;
     data['type'] = this.type;
-    return data;
+
+    return Map.fromEntries(data.entries.where((entry) => entry.value != null));
   }
 }
 
@@ -413,7 +414,7 @@ class I18n {
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> data = new Map<String, dynamic>();
     data['root'] = this.root;
-    return data;
+    return Map.fromEntries(data.entries.where((entry) => entry.value != null));
   }
 }
 
@@ -451,13 +452,15 @@ class Hosting {
     appAssociation = json['appAssociation'];
     i18n = json['i18n'] != null ? new I18n.fromJson(json['i18n']) : null;
     public = json['public'];
+    source = json['source'];
+
     if (json['redirects'] != null) {
       redirects = [];
+
       json['redirects'].forEach((v) {
         redirects!.add(Redirect.fromJson(v));
       });
     }
-    source = json['source'];
 
     if (json['ignore'] != null) {
       ignore = [];
@@ -465,7 +468,6 @@ class Hosting {
         ignore!.add(v);
       });
     }
-    source = json['ignore'];
 
     if (json['rewrites'] != null) {
       rewrites = [];
@@ -473,7 +475,6 @@ class Hosting {
         rewrites!.add(v);
       });
     }
-    rewrites = json['rewrites'];
   }
 
   Map<String, dynamic> toJson() {
@@ -494,7 +495,8 @@ class Hosting {
     data['source'] = this.source;
     data['ignore'] = this.ignore;
     data['rewrites'] = this.rewrites;
-    return data;
+
+    return Map.fromEntries(data.entries.where((entry) => entry.value != null));
   }
 }
 
@@ -649,7 +651,7 @@ class FrameworksBackend {
     omit = json['omit'];
     preserveExternalChanges = json['preserveExternalChanges'];
     region = json['region'];
-    secrets = json['secrets'].cast<String>();
+    secrets = json['secrets'] != null ? json['secrets'] as List<String> : null;
   }
 
   Map<String, dynamic> toJson() {
