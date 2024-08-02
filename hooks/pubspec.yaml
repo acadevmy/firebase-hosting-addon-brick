@@ -1,0 +1,8 @@
+name: angular_application_brick_hooks
+
+environment:
+  sdk: ^3.0.0
+
+dependencies:
+  glob: ^2.1.2
+  mason: 0.1.0-dev.57
