@@ -1,18 +1,23 @@
+import 'dart:convert';
 import 'dart:io';
-
 import 'package:mason/mason.dart';
+import 'models/models.dart';
 
 /**
  * Aggiungere Glob
  */
 
-void run(HookContext context) {
+void run(HookContext context) async {
+  final firebaseJsonUri = Directory.current.uri.resolve('firebase.json');
+
   final workSpaceDirectory = getWorkSpaceDirectory();
 
   List<Directory> applicationsDirectories =
       getApplicationsDirectory(workSpaceDirectory);
 
-  List<Application> applications = getApplications(applicationsDirectories);
+  List<Application> applications = getApplications(applicationsDirectories)
+      .where(isSupportedApplication)
+      .toList();
 
   if (applications.isEmpty) {
     context.logger.alert("No applications found 😔");
@@ -25,13 +30,27 @@ void run(HookContext context) {
     display: (application) => application.displayName,
   );
 
-  // Individuare il tipo per ogni application fe
-  // Angular -> angular.json
-  // Next -> next.config.mjs
+  FirebaseConfig firebaseConfig = await getFirebaseConfig(firebaseJsonUri);
 
-  // Chiedere all'utente quale application aggiungere come hosting
+  List<Hosting> hostings = selectedApplications.map((application) {
+    switch (application.type) {
+      case ApplicationType.angular:
+        return getAngularHosting(application);
+      case ApplicationType.nest:
+        return getNestHosting(application);
+      case ApplicationType.next:
+        return getNextHosting(application);
+      default:
+        throw Exception("ApplicationType is not supported");
+    }
+  }).toList();
 
-  // Configurare l'array hosting del file firebase.json in base al tipo di application
+  firebaseConfig.hosting.addAll(hostings);
+
+  await setFirebaseConfig(
+    firebaseJsonUri: firebaseJsonUri,
+    firebaseConfig: firebaseConfig,
+  );
 }
 
 Directory getWorkSpaceDirectory() {
@@ -58,78 +77,59 @@ List<Directory> getApplicationsDirectory(Directory workspaceDirectory) {
       .toList();
 }
 
-bool checkIfIsAngularApplication(Directory directory) {
-  const angularDescriptor = 'angular.json';
-
-  return File.fromUri(directory.uri.resolve(angularDescriptor)).existsSync();
-}
-
-bool checkIfIsCypressApplication(Directory directory) {
-  const cypressDescriptor = 'cypress.config.ts';
-
-  return File.fromUri(directory.uri.resolve(cypressDescriptor)).existsSync();
-}
-
-bool checkIfIsFirebaseApplication(Directory directory) {
-  const firebaseDescriptor = 'firebase.json';
-
-  return File.fromUri(directory.uri.resolve(firebaseDescriptor)).existsSync();
-}
-
-bool checkIfIsNestApplication(Directory directory) {
-  const nestDescriptor = 'nest-cli.json';
-
-  return File.fromUri(directory.uri.resolve(nestDescriptor)).existsSync();
-}
-
-bool checkIfIsNextApplication(Directory directory) {
-  const nextDescriptor = 'next.config.mjs';
-  // Cercare il file next.config anche con l'estensioni js, mjs, json
-
-  return File.fromUri(directory.uri.resolve(nextDescriptor)).existsSync();
-}
-
 List<Application> getApplications(List<Directory> applicationsDirectories) {
   return applicationsDirectories
       .map((directory) => Application(directory: directory))
-      .where((application) => application.type != ApplicationType.firebase)
       .toList();
 }
 
-ApplicationType getApplicationTypeFromDirectory(Directory directory) {
-  if (checkIfIsAngularApplication(directory)) {
-    return ApplicationType.angular;
-  }
-
-  if (checkIfIsCypressApplication(directory)) {
-    return ApplicationType.cypress;
-  }
-
-  if (checkIfIsFirebaseApplication(directory)) {
-    return ApplicationType.firebase;
-  }
-
-  if (checkIfIsNestApplication(directory)) {
-    return ApplicationType.nest;
-  }
-
-  if (checkIfIsNextApplication(directory)) {
-    return ApplicationType.next;
-  }
-
-  return ApplicationType.unknown;
+Future<FirebaseConfig> getFirebaseConfig(Uri firebaseJsonUri) async {
+  final firebaseRawJson = await File.fromUri(firebaseJsonUri).readAsString();
+  return FirebaseConfig.fromJson(json.decode(firebaseRawJson));
 }
 
-class Application {
-  Directory directory;
-  ApplicationType type;
-
-  String get name =>
-      directory.uri.pathSegments.lastWhere((path) => path.isNotEmpty);
-  String get displayName => '$name (${type.name.pascalCase})';
-
-  Application({required this.directory})
-      : type = getApplicationTypeFromDirectory(directory);
+Future<void> setFirebaseConfig({
+  required Uri firebaseJsonUri,
+  required FirebaseConfig firebaseConfig,
+}) async {
+  await File.fromUri(firebaseJsonUri).writeAsString(
+    json.encode(firebaseConfig.toJson()),
+  );
 }
 
-enum ApplicationType { angular, cypress, firebase, nest, next, unknown }
+Hosting getAngularHosting(Application application) {
+  return Hosting(
+    public: '../${application.name}/dist/browser',
+    ignore: const ["**/.*", "**/node_modules/**"],
+    rewrites: [Rewrite(source: '**', destination: "/index.html")],
+    target: application.name,
+  );
+}
+
+Hosting getNestHosting(Application application) {
+  return Hosting(
+    source: '../${application.name}',
+    ignore: const ["**/.*", "**/node_modules/**"],
+    target: application.name,
+    frameworksBackend: FrameworksBackend(region: 'europe-west1'),
+  );
+}
+
+Hosting getNextHosting(Application application) {
+  return Hosting(
+    source: '../${application.name}',
+    ignore: const ["firebase.json", "**/.*", "**/node_modules/**"],
+    target: application.name,
+    frameworksBackend: FrameworksBackend(region: 'europe-west1'),
+  );
+}
+
+bool isSupportedApplication(Application application) {
+  const supportedTypes = [
+    ApplicationType.angular,
+    ApplicationType.nest,
+    ApplicationType.next,
+  ];
+
+  return supportedTypes.contains(application.type);
+}
