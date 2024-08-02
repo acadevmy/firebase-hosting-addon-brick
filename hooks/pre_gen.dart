@@ -2,6 +2,12 @@ import 'dart:io';
 
 import 'package:mason/mason.dart';
 
+void main(List<String> args) {
+  print(
+    Directory.current.uri.pathSegments.lastWhere((path) => path.isNotEmpty),
+  );
+}
+
 /**
  * Aggiungere Glob
  */
@@ -88,7 +94,8 @@ class Application {
   Directory directory;
   ApplicationType type;
 
-  String get name => directory.uri.pathSegments.last;
+  String get name =>
+      directory.uri.pathSegments.lastWhere((path) => path.isNotEmpty);
   String get displayName => '$name (${type.name.pascalCase})';
 
   Application({required this.directory, required this.type});
