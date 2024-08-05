@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:mason/mason.dart';
-import 'package:pretty_json/pretty_json.dart';
 import 'models/models.dart';
 
 void run(HookContext context) async {
