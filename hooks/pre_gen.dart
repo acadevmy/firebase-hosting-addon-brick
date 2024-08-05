@@ -110,7 +110,7 @@ Future<void> setHostings({
   final encoder = JsonEncoder.withIndent('  ');
 
   await File.fromUri(firebaseJsonUri).writeAsString(
-    json.encode(encoder.convert(firebase)),
+    encoder.convert(firebase),
   );
 }
 

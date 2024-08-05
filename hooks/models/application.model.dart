@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:glob/list_local_fs.dart';
 import 'package:mason/mason.dart';
 import 'application_types.model.dart';
 import 'package:glob/glob.dart';
@@ -41,7 +42,7 @@ bool checkIfIsNestApplication(Directory directory) {
 
 bool checkIfIsNextApplication(Directory directory) {
   final nextDescriptor = Glob("next.config.*");
-  return nextDescriptor.matches(directory.path);
+  return nextDescriptor.listSync(root: directory.path).isNotEmpty;
 }
 
 ApplicationType getApplicationTypeFromDirectory(Directory directory) {
