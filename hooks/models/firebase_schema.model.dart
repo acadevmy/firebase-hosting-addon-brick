@@ -669,7 +669,8 @@ class FrameworksBackend {
     data['preserveExternalChanges'] = this.preserveExternalChanges;
     data['region'] = this.region;
     data['secrets'] = this.secrets;
-    return data;
+
+    return Map.fromEntries(data.entries.where((entry) => entry.value != null));
   }
 }
 

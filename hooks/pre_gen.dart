@@ -4,10 +4,6 @@ import 'package:mason/mason.dart';
 import 'package:pretty_json/pretty_json.dart';
 import 'models/models.dart';
 
-/**
- * Aggiungere Glob
- */
-
 void run(HookContext context) async {
   final firebaseJsonUri = Directory.current.uri.resolve('firebase.json');
 
@@ -16,18 +12,19 @@ void run(HookContext context) async {
   List<Directory> applicationsDirectories =
       getApplicationsDirectory(workSpaceDirectory);
 
-  List<Application> applications = getApplications(applicationsDirectories)
-      .where(isSupportedApplication)
-      .toList();
+  List<Application> supportedApplications =
+      getApplications(applicationsDirectories)
+          .where(isSupportedApplication)
+          .toList();
 
-  if (applications.isEmpty) {
+  if (supportedApplications.isEmpty) {
     context.logger.alert("No applications found 😔");
     return;
   }
 
   List<Application> selectedApplications = context.logger.chooseAny(
     "Which applications do you want to set up as hosting? (Press Space for select an option)",
-    choices: applications,
+    choices: supportedApplications,
     display: (application) => application.displayName,
   );
 
@@ -46,9 +43,16 @@ void run(HookContext context) async {
     }
   }).toList();
 
-  hostings.addAll(hostingsToAdds);
+  mergeHostings(
+    context: context,
+    hostings: hostings,
+    hostingsToAdds: hostingsToAdds,
+  );
 
-  await setHostings(firebaseJsonUri: firebaseJsonUri, hostings: hostings);
+  await setHostings(
+    hostings: hostings,
+    firebaseJsonUri: firebaseJsonUri,
+  );
 }
 
 Directory getWorkSpaceDirectory() {
@@ -98,6 +102,34 @@ Future<List<Hosting>> getHostings(Uri firebaseJsonUri) async {
       .toList();
 }
 
+void mergeHostings({
+  required HookContext context,
+  required List<Hosting> hostings,
+  required List<Hosting> hostingsToAdds,
+}) {
+  hostingsToAdds.forEach((hostingToAdd) {
+    final existingHostingIndex = hostings.indexWhere(
+      (hosting) => hosting.target == hostingToAdd.target,
+    );
+    final notExists = existingHostingIndex == -1;
+
+    if (notExists) {
+      hostings.add(hostingToAdd);
+      return;
+    }
+
+    final shouldOverwrite = context.logger.confirm(
+      "The target ${hostingToAdd.target} is already present, do you want to overwrite it?",
+    );
+
+    if (!shouldOverwrite) {
+      return;
+    }
+
+    hostings[existingHostingIndex] = hostingToAdd;
+  });
+}
+
 Future<void> setHostings({
   required Uri firebaseJsonUri,
   required List<Hosting> hostings,
@@ -135,7 +167,7 @@ Hosting getNestHosting(Application application) {
 Hosting getNextHosting(Application application) {
   return Hosting(
     source: '../${application.name}',
-    ignore: const ["firebase.json", "**/.*", "**/node_modules/**"],
+    ignore: const ["**/.*", "**/node_modules/**"],
     target: application.name,
     frameworksBackend: FrameworksBackend(region: 'europe-west1'),
   );
