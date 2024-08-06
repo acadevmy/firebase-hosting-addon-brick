@@ -52,6 +52,8 @@ void run(HookContext context) async {
     hostings: hostings,
     firebaseJsonUri: firebaseJsonUri,
   );
+
+  await setFirebaserc(selectedApplications);
 }
 
 Directory getWorkSpaceDirectory() {
@@ -165,17 +167,53 @@ Hosting getNestHosting(Application application) {
 
 Hosting getNextHosting(Application application) {
   return Hosting(
-    source: '../${application.name}',
-    ignore: const ["**/.*", "**/node_modules/**"],
-    target: application.name,
-    frameworksBackend: FrameworksBackend(region: 'europe-west1'),
+      source: '../${application.name}',
+      ignore: const ["**/.*", "**/node_modules/**"],
+      target: application.name,
+      frameworksBackend: FrameworksBackend(region: 'europe-west1'));
+}
+
+Future<void> setFirebaserc(List<Application> applications) async {
+  final firebaseRcUri = Directory.current.uri.resolve('.firebaserc');
+  final firebaseRcRawJson = await File.fromUri(firebaseRcUri).readAsString();
+  final rawProjects = json.decode(firebaseRcRawJson)['projects'];
+
+  if (rawProjects == null) {
+    return;
+  }
+
+  List<String> envinroments = List<String>.from(rawProjects.values)
+      .toSet()
+      .where((value) => value.isNotEmpty)
+      .toList();
+
+  Map<String, dynamic> targets = {};
+
+  for (var value in envinroments) {
+    Map<String, List<String>> hostingMap = {};
+
+    for (var application in applications) {
+      hostingMap[application.name] = ['../${application.name}'];
+    }
+
+    targets[value] = {"hosting": hostingMap};
+  }
+
+  Map<String, dynamic> finalJson = {
+    "projects": rawProjects,
+    "targets": targets
+  };
+
+  final encoder = JsonEncoder.withIndent('  ');
+
+  await File.fromUri(firebaseRcUri).writeAsString(
+    encoder.convert(finalJson),
   );
 }
 
 bool isSupportedApplication(Application application) {
   const supportedTypes = [
     ApplicationType.angular,
-    ApplicationType.nest,
     ApplicationType.next,
   ];
 
