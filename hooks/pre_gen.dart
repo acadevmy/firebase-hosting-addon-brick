@@ -177,6 +177,7 @@ Future<void> setFirebaserc(List<Application> applications) async {
   final firebaseRcUri = Directory.current.uri.resolve('.firebaserc');
   final firebaseRcRawJson = await File.fromUri(firebaseRcUri).readAsString();
   final rawProjects = json.decode(firebaseRcRawJson)['projects'];
+  final rawTargets = json.decode(firebaseRcRawJson)['targets'];
 
   if (rawProjects == null) {
     return;
@@ -187,16 +188,17 @@ Future<void> setFirebaserc(List<Application> applications) async {
       .where((value) => value.isNotEmpty)
       .toList();
 
-  Map<String, dynamic> targets = {};
+  Map<String, dynamic> targets = rawTargets ?? {};
 
-  for (var value in envinroments) {
-    Map<String, List<String>> hostingMap = {};
+  for (var envinroment in envinroments) {
+    Map<String, dynamic> hostingMap =
+        rawTargets?[envinroment]?['hosting'] ?? {};
 
     for (var application in applications) {
       hostingMap[application.name] = ['../${application.name}'];
     }
 
-    targets[value] = {"hosting": hostingMap};
+    targets[envinroment] = {"hosting": hostingMap};
   }
 
   Map<String, dynamic> finalJson = {
