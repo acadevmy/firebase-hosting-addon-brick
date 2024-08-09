@@ -219,10 +219,7 @@ Future<void> setFirebaserc(List<Application> applications) async {
 }
 
 bool isSupportedApplication(Application application) {
-  const supportedTypes = [
-    ApplicationType.angular,
-    ApplicationType.next,
-  ];
+  const supportedTypes = [ApplicationType.angular];
 
   return supportedTypes.contains(application.type);
 }
