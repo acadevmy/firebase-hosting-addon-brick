@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:ffi';
 import 'dart:io';
 import 'package:mason/mason.dart';
 import 'models/models.dart';
@@ -54,6 +55,10 @@ void run(HookContext context) async {
   );
 
   await setFirebaserc(selectedApplications);
+
+  await saveImplicitDependencies(
+    selectedApplications.map((application) => application.name).toList(),
+  );
 }
 
 Directory getWorkSpaceDirectory() {
@@ -220,4 +225,32 @@ bool isSupportedApplication(Application application) {
   ];
 
   return supportedTypes.contains(application.type);
+}
+
+Future<void> saveImplicitDependencies(List<String> dependencies) async {
+  final packageRawJson = await getPackageJsonFile().readAsString();
+  final Map<String, dynamic> decodedPackage = json.decode(packageRawJson);
+
+  final Map<String, dynamic> nxMap =
+      decodedPackage.putIfAbsent('nx', () => Map<String, dynamic>());
+  final List<String> implicitDependencies = decodedPackage.putIfAbsent(
+    'implicitDependencies',
+    () => <String>[],
+  );
+
+  nxMap['implicitDependencies'] = [
+    ...implicitDependencies,
+    ...dependencies,
+  ].toSet().toList();
+
+  final encoder = JsonEncoder.withIndent('  ');
+
+  await getPackageJsonFile().writeAsString(
+    encoder.convert(decodedPackage),
+  );
+}
+
+File getPackageJsonFile() {
+  final packageJsonUri = Directory.current.uri.resolve('package.json');
+  return File.fromUri(packageJsonUri);
 }
