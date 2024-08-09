@@ -231,12 +231,12 @@ Future<void> saveImplicitDependencies(List<String> dependencies) async {
   final packageRawJson = await getPackageJsonFile().readAsString();
   final Map<String, dynamic> decodedPackage = json.decode(packageRawJson);
 
-  final Map<String, dynamic> nxMap =
-      decodedPackage.putIfAbsent('nx', () => Map<String, dynamic>());
+  final Map<String, dynamic> nxMap = decodedPackage.putIfAbsent(
+      'nx', () => Map<String, dynamic>()) as Map<String, dynamic>;
   final List<String> implicitDependencies = decodedPackage.putIfAbsent(
     'implicitDependencies',
     () => <String>[],
-  );
+  ) as List<String>;
 
   nxMap['implicitDependencies'] = [
     ...implicitDependencies,
