@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:ffi';
+
 import 'dart:io';
 import 'package:mason/mason.dart';
 import 'models/models.dart';
@@ -233,10 +233,13 @@ Future<void> saveImplicitDependencies(List<String> dependencies) async {
 
   final Map<String, dynamic> nxMap = decodedPackage.putIfAbsent(
       'nx', () => Map<String, dynamic>()) as Map<String, dynamic>;
-  final List<String> implicitDependencies = decodedPackage.putIfAbsent(
+
+  final List<String> implicitDependencies = (nxMap.putIfAbsent(
     'implicitDependencies',
     () => <String>[],
-  ) as List<String>;
+  ) as List<dynamic>)
+      .map((implicitDependency) => implicitDependency as String)
+      .toList();
 
   nxMap['implicitDependencies'] = [
     ...implicitDependencies,

@@ -1,0 +1,16 @@
+{
+  "nx": {
+    "targets": {
+      "build": {
+        "inputs": [
+          "default",
+          "environment"
+        ]
+      }
+    },
+    "implicitDependencies": [
+      "Angu",
+      "Nexto"
+    ]
+  }
+}
