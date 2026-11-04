@@ -22,11 +22,10 @@ void run(HookContext context) async {
     return;
   }
 
-  List<Application> selectedApplications = context.logger.chooseAny(
-    "Which applications do you want to set up as hosting? (Press Space for select an option)",
-    choices: supportedApplications,
-    display: (application) => application.displayName,
-  );
+  List<Application> selectedApplications =
+      getSelectedApplications(context, supportedApplications);
+
+  final overwriteHostings = getOverwriteHostings(context);
 
   List<Hosting> hostings = await getHostings(firebaseJsonUri);
 
@@ -47,6 +46,7 @@ void run(HookContext context) async {
     context: context,
     hostings: hostings,
     hostingsToAdds: hostingsToAdds,
+    overwriteHostings: overwriteHostings,
   );
 
   await setHostings(
@@ -59,6 +59,88 @@ void run(HookContext context) async {
   await saveImplicitDependencies(
     selectedApplications.map((application) => application.name).toList(),
   );
+}
+
+bool isNonInteractive(HookContext context) {
+  return context.vars['devmyNonInteractive'] == true || !stdin.hasTerminal;
+}
+
+List<Application> getSelectedApplications(
+  HookContext context,
+  List<Application> supportedApplications,
+) {
+  final rawHostingApplications = context.vars['hostingApplications'];
+  final supportedNames =
+      supportedApplications.map((application) => application.name).join(', ');
+
+  if (rawHostingApplications == null ||
+      rawHostingApplications.toString().trim().isEmpty) {
+    if (isNonInteractive(context)) {
+      throw Exception(
+        'Missing required input "hostingApplications" in non-interactive mode. '
+        'Pass --var hostingApplications=<names> with a comma-separated list of '
+        'applications or "all". Valid values: all, $supportedNames',
+      );
+    }
+
+    return context.logger.chooseAny(
+      "Which applications do you want to set up as hosting? (Press Space for select an option)",
+      choices: supportedApplications,
+      display: (application) => application.displayName,
+    );
+  }
+
+  final names = rawHostingApplications
+      .toString()
+      .split(',')
+      .map((name) => name.trim())
+      .where((name) => name.isNotEmpty)
+      .toSet();
+
+  if (names.contains('all')) {
+    return supportedApplications;
+  }
+
+  final unknownNames = names
+      .where((name) =>
+          !supportedApplications.any((application) => application.name == name))
+      .toList();
+
+  if (unknownNames.isNotEmpty) {
+    throw Exception(
+      'Unknown application(s) in "hostingApplications": ${unknownNames.join(', ')}. '
+      'Pass --var hostingApplications=<names> with a comma-separated list of '
+      'applications or "all". Valid values: all, $supportedNames',
+    );
+  }
+
+  return supportedApplications
+      .where((application) => names.contains(application.name))
+      .toList();
+}
+
+bool? getOverwriteHostings(HookContext context) {
+  final rawOverwriteHostings = context.vars['overwriteHostings'];
+
+  if (rawOverwriteHostings == null) {
+    return isNonInteractive(context) ? false : null;
+  }
+
+  if (rawOverwriteHostings is bool) {
+    return rawOverwriteHostings;
+  }
+
+  switch (rawOverwriteHostings.toString().trim().toLowerCase()) {
+    case 'true':
+      return true;
+    case 'false':
+      return false;
+    default:
+      throw Exception(
+        'Invalid value "$rawOverwriteHostings" for "overwriteHostings". '
+        'Pass --var overwriteHostings=<value>. Valid values: true, false',
+      );
+  }
 }
 
 Directory getWorkSpaceDirectory() {
@@ -112,6 +194,7 @@ void mergeHostings({
   required HookContext context,
   required List<Hosting> hostings,
   required List<Hosting> hostingsToAdds,
+  bool? overwriteHostings,
 }) {
   hostingsToAdds.forEach((hostingToAdd) {
     final existingHostingIndex = hostings.indexWhere(
@@ -124,11 +207,17 @@ void mergeHostings({
       return;
     }
 
-    final shouldOverwrite = context.logger.confirm(
-      "The target ${hostingToAdd.target} is already present, do you want to overwrite it?",
-    );
+    final shouldOverwrite = overwriteHostings ??
+        context.logger.confirm(
+          "The target ${hostingToAdd.target} is already present, do you want to overwrite it?",
+        );
 
     if (!shouldOverwrite) {
+      if (overwriteHostings == false) {
+        context.logger.info(
+          "The target ${hostingToAdd.target} is already present, skipped (pass --var overwriteHostings=true to overwrite it)",
+        );
+      }
       return;
     }
 
